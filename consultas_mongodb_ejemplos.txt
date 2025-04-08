@@ -1,0 +1,94 @@
+
+CONSULTAS DE EJEMPLO PARA BASES DE DATOS EDUCATIVAS (MONGODB)
+
+1. Porcentaje de registros que cumplen una condición
+-----------------------------------------------------
+¿Qué porcentaje de registros tienen acceso a internet?
+db.estudiantes.countDocuments({ internet: true }) / db.estudiantes.countDocuments({}) * 100
+
+2. Conteo por categoría
+------------------------
+¿Cuántos estudiantes hay por carrera?
+db.estudiantes.aggregate([
+  { $group: { _id: "$carrera", total: { $sum: 1 } } },
+  { $sort: { total: -1 } }
+])
+
+3. Promedio de un campo numérico
+---------------------------------
+¿Cuál es el promedio de edad de los estudiantes?
+db.estudiantes.aggregate([
+  { $group: { _id: null, promedio_edad: { $avg: "$edad" } } }
+])
+
+4. Valor más común (moda)
+---------------------------
+¿Cuál es la ciudad más frecuente de origen?
+db.estudiantes.aggregate([
+  { $match: { ciudad_origen: { $ne: null } } },
+  { $group: { _id: "$ciudad_origen", count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 1 }
+])
+
+5. Agrupación por múltiples criterios
+--------------------------------------
+Número de estudiantes por género y carrera:
+db.estudiantes.aggregate([
+  { $group: { _id: { genero: "$genero", carrera: "$carrera" }, total: { $sum: 1 } } },
+  { $sort: { total: -1 } }
+])
+
+6. Filtrar y contar documentos
+-------------------------------
+¿Cuántos estudiantes tienen promedio mayor o igual a 4?
+db.estudiantes.countDocuments({ promedio_general: { $gte: 4 } })
+
+7. Porcentaje con regex (correo institucional, etc.)
+-----------------------------------------------------
+¿Qué porcentaje usa un correo de Gmail?
+db.estudiantes.countDocuments({ correo: /@gmail\.com$/ }) / db.estudiantes.countDocuments({}) * 100
+
+8. Rango de valores
+--------------------
+¿Cuántos estudiantes tienen entre 18 y 22 años?
+db.estudiantes.countDocuments({ edad: { $gte: 18, $lte: 22 } })
+
+9. Promedio agrupado por categoría
+-----------------------------------
+Promedio de nota final por carrera:
+db.estudiantes.aggregate([
+  { $group: { _id: "$carrera", promedio_nota: { $avg: "$nota_final" } } },
+  { $sort: { promedio_nota: -1 } }
+])
+
+10. Conteo de estados condicionales
+------------------------------------
+Cantidad de estudiantes con estados “activo”, “inactivo”, “egresado”:
+db.estudiantes.aggregate([
+  { $group: { _id: "$estado", total: { $sum: 1 } } },
+  { $sort: { total: -1 } }
+])
+
+11. Promedio ponderado
+------------------------
+Promedio ponderado de notas por estudiante:
+db.estudiantes.aggregate([
+  { $project: {
+      nombre: 1,
+      promedio_ponderado: {
+        $divide: [
+          { $sum: { $map: { input: "$materias", as: "m", in: { $multiply: ["$$m.nota", "$$m.creditos"] } } } },
+          { $sum: "$materias.creditos" }
+        ]
+      }
+    }
+  }
+])
+
+12. Cantidad de estudiantes por año de ingreso
+-----------------------------------------------
+db.estudiantes.aggregate([
+  { $group: { _id: "$año_ingreso", total: { $sum: 1 } } },
+  { $sort: { _id: 1 } }
+])
