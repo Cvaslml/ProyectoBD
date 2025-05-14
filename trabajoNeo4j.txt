@@ -1,0 +1,105 @@
+1. Total nodos
+MATCH (n) RETURN count(n) AS TotalNodos;
+
+2. Total relaciones
+MATCH ()-[r]->() RETURN count(r) AS TotalRelaciones;
+
+3. Nodos de tipo Usuario
+MATCH (u:Usuario) RETURN count(u) AS TotalUsuarios;
+
+4. Nodos tipo Post
+MATCH (p:Post) RETURN count(p) AS TotalPosts;
+
+4. Relaciones de tipo Follow
+MATCH ()-[r:Follow]->() RETURN count(r) AS TotalFollow;
+
+5. Relaciones de tipo Like
+MATCH ()-[r:Likes]->() RETURN count(r) AS TotalLike;
+
+6. Relaciones de tipo Posted
+MATCH ()-[r:Posted]->() RETURN count(r) AS TotalPosted;
+
+7. ¿Cuál es el id_usuario del usuario con la mayor cantidad de Post?
+MATCH (u:Users)-[:Posted]->(p:Post)
+RETURN u.id_usuario, count(p) AS num_posts
+ORDER BY num_posts DESC
+LIMIT 1;
+
+8. ¿Cuál es el id_post del post con la mayor cantidad de LIKES? – (Si existen varios post que compartan el mismo número de likes y estos sean el grupo con más likes agregar el ID de cualquiera de ellos)
+MATCH (u)-[:Likes]->(p:Post)
+RETURN p.id_post, count(u) AS num_likes
+ORDER BY num_likes DESC
+LIMIT 1;
+
+9. ¿Cuál es el id_usuario del usuario con la mayor cantidad de FOLLOWS (Seguidores)? – (Tenga en cuenta que para esta consulta sí es importante la direccionalidad)
+MATCH (seguidor)-[:Follow]->(seguido:Users)
+RETURN seguido.id_usuario, count(seguidor) AS num_seguidores
+ORDER BY num_seguidores DESC
+LIMIT 1;
+
+10. ¿Cuántos usuarios tienen exactamente 5 seguidores? – (Tenga en cuenta que para esta consulta sí es importante la direccionalidad)
+MATCH (seguidor)-[:Follow]->(seguido:Users)
+WITH seguido, count(seguidor) AS num_seguidores
+WHERE num_seguidores = 5
+RETURN count(seguido) AS usuarios_con_5_seguidores;
+
+11. ¿Cuántas parejas diferentes de usuarios, se siguen mutuamente? – (Tenga en cuenta que para esta consulta sí es importante la direccionalidad)
+MATCH (a:Users)-[:Follow]->(b:Users),
+      (b)-[:Follow]->(a)
+WHERE elementId(a) < elementId(b)  // evita contar la misma pareja dos veces
+RETURN count(*) AS parejas_mutuas;
+
+12. ¿Cuántos nodos de tipo usuario, tienen conexiones “entrantes o salientes” de tipo FOLLOW con al menos 12 nodos diferentes de tipo usuario?
+
+MATCH (u:Users)
+MATCH (u)-[:Follow]-(otro:Users)
+WITH u, count(DISTINCT otro) AS conexiones
+WHERE conexiones >= 12
+RETURN count(u) AS usuarios_con_12_o_mas_conexiones;
+
+13. ¿Cuál es la longitud del camino más corto (en función de cantidad de relaciones que lo componente – profundidad) entre el nodo Usuario con id_usuario 2 y el nodo POST con id_post 103?
+MATCH path = shortestPath(
+  (u:Users {id_usuario: 2})-[*..6]-(p:Post {id_post: 103})
+)
+RETURN length(path) AS longitud_camino;
+
+14. ¿Cuál es el porcentaje de usuarios que nacieron antes del año 2000 respecto al total de usuario? – Responda con un número entero sin el símbolo %.
+MATCH (u:Users)
+WITH count(*) AS total,
+     count(CASE WHEN u.anio_nacimiento < 2000 THEN 1 END) AS antes_2000
+RETURN toInteger((antes_2000 * 100.0) / total) AS porcentaje;
+
+15. ¿Cuál es el promedio de POST realizados por Usuario? – Aproxime su respuesta al entero más cercano
+CALL () {
+  MATCH (u:Users)
+  RETURN count(u) AS total_usuarios
+}
+CALL () {
+  MATCH (p:Post)
+  RETURN count(p) AS total_posts
+}
+RETURN round(toFloat(total_posts) / total_usuarios) AS promedio_posts_por_usuario;
+
+ó
+
+MATCH (u:Users)
+WITH count(u) AS total_usuarios
+MATCH (p:Post)
+WITH total_usuarios, count(p) AS total_posts
+RETURN round(toFloat(total_posts) / total_usuarios) AS promedio_posts_por_usuario;
+
+16. ¿Cuántos POST se publicaron por año?
+MATCH (p:Post)
+WHERE p.fecha IS NOT NULL
+RETURN p.fecha.year AS anio, count(*) AS cantidad
+ORDER BY anio;
+
+17. ¿Existe algún POST que no tenga relacionado quien lo publicó? – Si la respuesta es SI, responda con el ID de uno de los POST que presenten esta condición, Si la respuesta es NO responda con 0.
+OPTIONAL MATCH (p:Post)
+WHERE NOT ( (:Users)-[:Posted]->(p) )
+WITH collect(p.id_post) AS sin_autor
+RETURN 
+  CASE 
+    WHEN size(sin_autor) > 0 THEN sin_autor[0]
+    ELSE 0 
+  END AS resultado;
